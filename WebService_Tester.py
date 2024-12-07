@@ -175,22 +175,46 @@ class WIPRackService(ServiceBase):
 
     @rpc(Unicode,  _returns=(Unicode))
     def WIPRACK_Info(ctx, Param):
-        root = etree.Element("WIPRACK_InfoResult")
-        status = etree.SubElement(root, "Status")
-        status.text = "1"
-        status_msg = etree.SubElement(root, "StatusMsg")
-        status_msg.text = "PASS"
-
-        wiprack_info = etree.SubElement(root, "WIPRACK_InfoResult")
+        global wiprack 
+        # 在此實現獲取 WIP rack 信息的業務邏輯
+        # FIXME: 處理 {Param} 參數 & 回傳正確資訊，目前先回傳固定字串
+        wiprack = []
         for i in range(2):
             for j in range(15):
-                cassette = etree.SubElement(wiprack_info, "Cassette")
-                etree.SubElement(cassette, "CURR_DEV").text = "WipRack01"
-                etree.SubElement(cassette, "CURR_LOC").text = f"A_{j+1}"
-                etree.SubElement(cassette, "CASSETTEID").text = f"ID_{i}{j}"
-                etree.SubElement(cassette, "LOC_STATE").text = "0"
-
-        return etree.tostring(root, pretty_print=True, encoding="unicode")
+                row, column = label_positions[(i, j)]
+            
+            # 當 USB_BUS 不存在或未開啟
+                if not USB_BUS or not USB_BUS.is_open:
+                    cassette_status = {'Status': '0', 'StatusMsg': 'FAIL'}
+                    cassette = {
+                        'CURR_DEV': 'WipRack01',
+                        'CURR_LOC': f"{row}_{column}",
+                        'CASSETTEID': labels[i][j]['text']
+                    }
+                else:
+                    bg_color = labels[i][j].cget('bg')
+                
+                    if bg_color == 'green':  # 綠色背景
+                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        cassette = {
+                            'CURR_DEV': 'WipRack01',
+                            'CURR_LOC': f"{row}_{column}",
+                            'CASSETTEID': labels[i][j]['text'],
+                            'LOC_STATE': '0'
+                        }
+                    elif bg_color == 'gray':  # 灰色背景
+                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        cassette = {
+                            'CURR_DEV': 'WipRack01',
+                            'CURR_LOC': f"{row}_{column}",
+                            'CASSETTEID': labels[i][j]['text'],
+                            'LOC_STATE': '1'
+                        }
+                    
+            # 每次迴圈都把 cassette 加入 wiprack 列表
+                wiprack.append(cassette)
+            
+        return json.dumps(cassette_status,wiprack, ensure_ascii=False)
 
 application = Application(
     [WIPRackService],
