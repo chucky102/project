@@ -16,6 +16,8 @@ import logging
 import tkinter as tk
 import requests
 
+
+
 # 版本號
 VERSION = 'V0.4'
 
@@ -171,7 +173,7 @@ class WIPRackService(ServiceBase):
             "StatusMsg": "fail , 詢問儲格狀態逾時"
         }'''
 
-    @rpc(Unicode, _returns=Unicode)
+    @rpc(Unicode,  _returns=(Unicode))
     def WIPRACK_Info(ctx, Param):
         global wiprack 
         # 在此實現獲取 WIP rack 信息的業務邏輯
@@ -179,23 +181,40 @@ class WIPRackService(ServiceBase):
         wiprack = []
         for i in range(2):
             for j in range(15):
+                row, column = label_positions[(i, j)]
+            
+            # 當 USB_BUS 不存在或未開啟
                 if not USB_BUS or not USB_BUS.is_open:
-                    row, column = label_positions[(i, j)]
-                    cassette_status = {'Status':'0','StatusMsg':'FAIL'}
-                    cassette = {'CURR_DEV':'WipRack01','CURR_LOC': f"{row}_{column}",'CASSETTEID':labels[i][j]['text']}
-                    wiprack.append(cassette)
+                    cassette_status = {'Status': '0', 'StatusMsg': 'FAIL'}
+                    cassette = {
+                        'CURR_DEV': 'WipRack01',
+                        'CURR_LOC': f"{row}_{column}",
+                        'CASSETTEID': labels[i][j]['text']
+                    }
                 else:
-                    row, column = label_positions[(i, j)]
-                    bg_color= labels[i][j].cget('bg')
-                    if bg_color == 'green':#還須更改
-                        cassette_status = {'Status':'1','StatusMsg':'PASS'}
-                        cassette = {'CURR_DEV':'WipRack01','CURR_LOC': f"{row}_{column}",'CASSETTEID':labels[i][j]['text'],'LOC_STATE':'0'}
-                    elif bg_color == 'gray':
-                        cassette_status = {'Status':'1','StatusMsg':'PASS'}
-                        cassette = {'CURR_DEV':'WipRack01','CURR_LOC': f"{row}_{column}",'CASSETTEID':labels[i][j]['text'],'LOC_STATE':'1'}
-                    wiprack.append(cassette)
-            cassette_id = wiprack  # 提取 Param 的文本值
-        return f'''{cassette_status,cassette_id}'''
+                    bg_color = labels[i][j].cget('bg')
+                
+                    if bg_color == 'green':  # 綠色背景
+                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        cassette = {
+                            'CURR_DEV': 'WipRack01',
+                            'CURR_LOC': f"{row}_{column}",
+                            'CASSETTEID': labels[i][j]['text'],
+                            'LOC_STATE': '0'
+                        }
+                    elif bg_color == 'gray':  # 灰色背景
+                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        cassette = {
+                            'CURR_DEV': 'WipRack01',
+                            'CURR_LOC': f"{row}_{column}",
+                            'CASSETTEID': labels[i][j]['text'],
+                            'LOC_STATE': '1'
+                        }
+                    
+            # 每次迴圈都把 cassette 加入 wiprack 列表
+                wiprack.append(cassette)
+            
+        return f'''{cassette_status, wiprack}'''
 
 application = Application(
     [WIPRackService],
