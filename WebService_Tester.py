@@ -16,7 +16,7 @@ import logging
 import tkinter as tk
 import requests
 import json
-
+from spyne.protocol.json import JsonDocument
 # 版本號
 VERSION = 'V0.4'
 
@@ -174,7 +174,7 @@ class WIPRackService(ServiceBase):
 
     @rpc(Unicode, _returns=Unicode)
     def WIPRACK_Info(ctx, Param):
-        global wiprack 
+        global wiprack,wiprack1
         # 在此實現獲取 WIP rack 信息的業務邏輯
         # FIXME: 處理 {Param} 參數 & 回傳正確資訊，目前先回傳固定字串
         wiprack = []
@@ -184,7 +184,7 @@ class WIPRackService(ServiceBase):
             
             # 當 USB_BUS 不存在或未開啟
                 if not USB_BUS or not USB_BUS.is_open:
-                    cassette_status = {'Status': '0', 'StatusMsg': 'FAIL'}
+                    #cassette_status = {'Status': '0', 'StatusMsg': 'FAIL'}
                     cassette = {
                         'CURR_DEV': 'WipRack01',
                         'CURR_LOC': f"{row}_{column}",
@@ -194,7 +194,7 @@ class WIPRackService(ServiceBase):
                     bg_color = labels[i][j].cget('bg')
                 
                     if bg_color == 'green':  # 綠色背景
-                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        #cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
                         cassette = {
                             'CURR_DEV': 'WipRack01',
                             'CURR_LOC': f"{row}_{column}",
@@ -202,7 +202,7 @@ class WIPRackService(ServiceBase):
                             'LOC_STATE': '0'
                         }
                     elif bg_color == 'gray':  # 灰色背景
-                        cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
+                        #cassette_status = {'Status': '1', 'StatusMsg': 'PASS'}
                         cassette = {
                             'CURR_DEV': 'WipRack01',
                             'CURR_LOC': f"{row}_{column}",
@@ -212,14 +212,30 @@ class WIPRackService(ServiceBase):
                     
             # 每次迴圈都把 cassette 加入 wiprack 列表
                 wiprack.append(cassette)
-    
-        return f'''{cassette_status,wiprack}'''
+            if not USB_BUS or not USB_BUS.is_open:
+                response = {
+                "Status": "0",  # 假设整个操作成功，状态为 1
+                "StatusMsg": 'fail',  # 状态消息为 "pass"
+                "Data": {
+                    "RackInfo": wiprack  # 包含所有 cassette 的信息
+                }
+            }
+            else:
+                response = {
+                "Status": "1",  # 假设整个操作成功，状态为 1
+                "StatusMsg": 'pass',  # 状态消息为 "pass"
+                "Data": {
+                    "RackInfo": wiprack  # 包含所有 cassette 的信息
+                }
+            }
+
+        return json.dumps(response)
 
 application = Application(
     [WIPRackService],
     tns='http://tempuri.org/',
     in_protocol=LoggingSoap11(validator='lxml'),
-    out_protocol=LoggingSoap11(validator='lxml'),
+    out_protocol=LoggingSoap11(),
     name='WIP_rack_Service'
 )
 
