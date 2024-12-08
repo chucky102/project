@@ -17,7 +17,6 @@ import tkinter as tk
 import requests
 import json
 
-
 # 版本號
 VERSION = 'V0.4'
 
@@ -173,7 +172,7 @@ class WIPRackService(ServiceBase):
             "StatusMsg": "fail , 詢問儲格狀態逾時"
         }'''
 
-    @rpc(Unicode,  _returns=(Unicode))
+    @rpc(Unicode, _returns=Unicode)
     def WIPRACK_Info(ctx, Param):
         global wiprack 
         # 在此實現獲取 WIP rack 信息的業務邏輯
@@ -213,14 +212,14 @@ class WIPRackService(ServiceBase):
                     
             # 每次迴圈都把 cassette 加入 wiprack 列表
                 wiprack.append(cassette)
-            
-        return json.dumps(cassette_status,wiprack, ensure_ascii=False)
+    
+        return f'''{cassette_status,wiprack}'''
 
 application = Application(
     [WIPRackService],
     tns='http://tempuri.org/',
     in_protocol=LoggingSoap11(validator='lxml'),
-    out_protocol=LoggingSoap11(),
+    out_protocol=LoggingSoap11(validator='lxml'),
     name='WIP_rack_Service'
 )
 
