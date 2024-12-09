@@ -468,6 +468,34 @@ def RGB_LIGHT(rgb_light_type, i, j):
     else:
         #print("USB 端口未打开或连接失败")
         None
+def tag_change_and_send_messages():
+    for num_1 in range(2):
+        for num_2 in range(15):
+            bg_color = labels[num_1][num_2].cget('bg')
+            prebg_color = previous_labels[num_1][num_2].cget('bg')
+            if data_cut[num_1][num_2] != previous_data_cut[num_1][num_2] or bg_color != prebg_color:
+                row, column = label_positions[(num_1, num_2)]
+                if bg_color == 'gray':
+                    loc_state = '1'
+                elif bg_color == 'yellow':
+                    loc_state = '1'
+                elif bg_color == 'green':
+                    loc_state = '0'
+                else:
+                    continue  # 忽略不符合條件的顏色
+
+                # 構建 CASSETTEID 字典
+                CASSETTEID = {
+                    'CASSETTEID': labels[num_1][num_2]['text'],
+                    'CURR_DEV': f"WIPRACK{wiprack_data[0]}",
+                    'CURR_LOC': f"{row}_{column}",
+                    'LOC_STATE': loc_state
+                }
+
+                # 創建並啟動執行緒
+                thread = threading.Thread(target=send_message_wip_transfer, args=(CASSETTEID,))
+                thread.daemon = True
+                thread.start()  # 開始執行緒
 '''initial setting'''
 USB_BUS = None
 lock = threading.Lock()
@@ -618,7 +646,7 @@ labels[1][14].grid(row=5, column=4)
 previous_data = None
 previous_labels = labels
 def update_labels():
-    global USB_BUS, let_target_label_maintain_yellow , USB_DIS,data,labels,previous_data_cut,light_command_bytes,light_type,target,rgb_light_type,label_positions,previous_labels
+    global USB_BUS, let_target_label_maintain_yellow ,USB_DIS, data,labels,previous_data_cut,light_command_bytes,light_type,target,rgb_light_type,label_positions,previous_labels
     root.attributes("-fullscreen", True)
     '''Check USB Connection'''
     if not USB_BUS or not USB_BUS.is_open:
@@ -628,7 +656,7 @@ def update_labels():
         else:
             USB_DIS = 0
     '''get usb data'''
-    data[0] =  send_hex_command(USB_BUS, hex_command[0])   
+    data[0] =send_hex_command(USB_BUS, hex_command[0])   
     '''cut data in 30 piece'''
     split_length = 12  # 每段12個字元
     segments = []  # 用來存儲切分結果15                                                                                                                                                                                     
@@ -658,7 +686,6 @@ def update_labels():
                     #excutor.submit(send_message_wip_transfer, args=(CASSETTEID,))
                     let_target_label_maintain_yellow [i][j] = 'NO_Target'
     else:
-        #time.sleep(0.15)
         wiprack_data[0] = send_wiprack_hex_command(USB_BUS, wiprack_hex_command[0])
         if wiprack_data[0] == None:
             top_right_label['text'] = f"WIPRACK{wiprack_data[0]}"
@@ -713,34 +740,10 @@ def update_labels():
                 #labels[i][j].config(bg='yellow')
                 let_target_label_maintain_yellow [i][j] = labels[i][j]['text']
                 target = None
-    ###如果tag出現變化執行
-    for num_1 in range(2):
-        for num_2 in range(15):
-            bg_color = labels[num_1][num_2].cget('bg')
-            prebg_color= previous_labels[num_1][num_2].cget('bg')
-            if data_cut[num_1][num_2]!=previous_data_cut[num_1][num_2] or  bg_color != prebg_color :
-                row, column = label_positions[(num_1, num_2)]
-                if bg_color == 'gray':
-                    loc_state = '1'
-                elif bg_color == 'yellow':
-                    loc_state = '1'
-                elif bg_color == 'green':
-                    loc_state = '0'
-                else:
-                    continue  # 忽略不符合條件的顏色
-
-            # 構建 CASSETTEID 字典
-                CASSETTEID = {
-                    'CASSETTEID': labels[num_1][num_2]['text'],
-                    'CURR_DEV': f"WIPRACK{wiprack_data[0]}",
-                    'CURR_LOC': f"{row}_{column}",
-                    'LOC_STATE': loc_state
-                }
-
-            # 創建並啟動執行緒
-                thread = threading.Thread(target=send_message_wip_transfer, args=(CASSETTEID,))
-                thread.daemon = True
-                thread.start()  # 開始執行緒
+    # 創建並啟動執行緒
+    thread = threading.Thread(target=tag_change_and_send_messages)
+    thread.daemon = True
+    thread.start()  # 開始執行緒
     previous_data_cut = data_cut               
     root.after(200, update_labels)
 if __name__ == '__main__':
